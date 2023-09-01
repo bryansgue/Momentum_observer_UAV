@@ -61,10 +61,10 @@ for k=1:length(t)
     
     %% 2) DINAMICA DEL UAV (VELOCIDAD Y POSICION)
     Tu(:,k) = zeros(4,1);
-    Tu(1,k) = 2*(sign(0.2*sin(0.005*k)+3*cos(-0.01*k)));
-    Tu(2,k) = 2*rand()*(sign(0.002*sin(0.005*k)+0.01*cos(-0.005*k)));
-    Tu(3,k) = 1*sin(0.005*k)+1*cos(-0.0025*k);
-    Tu(4,k) = 1.5*(sign(0.002*sin(0.04*k)+3*cos(-0.004*k)));
+    Tu(1,k) = 2*(sign(0.2*sin(0.05*k)+3*cos(-0.1*k)));
+    Tu(2,k) = 2*rand()*(sign(0.2*sin(0.05*k)+3*cos(-0.05*k)));
+    Tu(3,k) = 1*sin(0.05*k)+1*cos(-0.025*k);
+    Tu(4,k) = 1.5*(sign(0.2*sin(0.04*k)+3*cos(-0.04*k)));
     
     Tu(:,k) = 0.2*Tu(:,k);
     
@@ -103,9 +103,9 @@ for k=1:length(t)
      
     p_p_est = u_ref(:,k) - B(:,k) + Tu_est(:,k);
     
-    Tu_est_p(:,k) = 2*eye(4)*(p_p - p_p_est);
+    Tu_est_p(:,k) = p_p - p_p_est;
     
-    Tu_est(:,k+1) = Tu_est(:,k) + ts*Tu_est_p(:,k);
+    Tu_est(:,k+1)
 %     
 %     Tu_est_p(:,k) = 
     

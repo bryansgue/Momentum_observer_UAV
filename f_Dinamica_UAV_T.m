@@ -75,7 +75,7 @@ B = [zeros(4,4);
 
    
 F = [zeros(4,1);...
-     -inv(M)*Tu];
+     inv(M)*Tu];
 
 %% vector que incluye el vector de estados y la referencia
 

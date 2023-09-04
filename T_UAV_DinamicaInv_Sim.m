@@ -37,6 +37,10 @@ u = [0; 0;0;0];
 x = [h;u];
 
 Tu_est(:,1) = [0;0;0;0];
+
+% Ganancia del Observador
+Gain = 2;
+
 for k=1:length(t)
     tic
     
@@ -68,52 +72,25 @@ for k=1:length(t)
     
     Tu(:,k) = 0.2*Tu(:,k);
     
+    %% Dinamica del Sistema
     x(:,k+1) = UAV_Dinamica_RK4_T(chi_uav,x(:,k),u_ref(:,k),L,ts,Tu(:,k));
     
     h(:,k+1) = x(1:4,k+1);
     u(:,k+1) = x(5:8,k+1);
     
-    xu(k+1) = h(1,k+1);
-    yu(k+1) = h(2,k+1);
-    zu(k+1) = h(3,k+1);
-    psi(k+1) = Angulo(h(4,k));
-    
-    u_t(:,k) = u_ref(:,k) - Tu(:,k);
     
     %% Observador
     
-%     p(:,k) = M*u(:,k);
     if k>1
         u_p(:,k) = (u(:,k)- u(:,k-1))/ts ;
     else
         u_p(:,k) = [0;0;0;0];
     end
-%     u_p(:,k) = [0;0;0;0];
-    
-    M = function_M(chi_uav,L);
-    C = function_C(chi_uav,u(:,k), L);
 
+     
+    Tu_est(:,k+1) = Momentum_Observer(chi_uav,u_ref(:,k),u(:,k),u_p(:,k),Tu_est(:,k),L,ts,Gain);
+    
 
-    u_tot(:,k) = Model_um(u_p(:,k), u(:,k), chi_uav, L);
-    p_p     = u_tot(:,k) + C'*u(:,k);
-    
-    
-    B(:,k) = -C'*u(:,k);
-     
-     
-    p_p_est = u_ref(:,k) - B(:,k) + Tu_est(:,k);
-    
-    Tu_est_p(:,k) = 2*eye(4)*(p_p - p_p_est);
-    
-    Tu_est(:,k+1) = Tu_est(:,k) + ts*Tu_est_p(:,k);
-%     
-%     Tu_est_p(:,k) = 
-    
-    % Perturvacion
-    % minimo = -0.00;
-    % maximo =  0.00;
-    % noise(:,k)  =  (maximo-minimo) .* rand(19,1) + minimo;
-    % chi_real(:,k+1) = chi_real(:,k) + noise(:,k);
     
     %% 3) Tiempo de máquina
     dt(k) = toc;
@@ -134,7 +111,7 @@ title ("Simulacion")
 
 % 2) Configura escala y color del UAV
 Drone_Parameters(0.02);
-H1 = Drone_Plot_3D(xu(1),yu(1),zu(1),0,0,psi(1));hold on
+% H1 = Drone_Plot_3D(xu(1),yu(1),zu(1),0,0,psi(1));hold on
 
 
 % c) Gráfica de la trayectoria deseada
@@ -142,17 +119,17 @@ plot3(xd,yd,zd,'--')
 xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
 
 % 5) Simulación de movimiento del manipulador aéreo
-for k=1:50:length(t)
-    % a) Eliminas los dibujos anteriores del manipulador aéreo
-    delete(H1);
-    H1 = Drone_Plot_3D(xu(k),yu(k),zu(k),0,0,psi(k)); hold on
-    % b) Gráfica la posición deseada vs actual en cada frame
-    plot3(xu(1:k),yu(1:k),zu(1:k),'r')
-    hold on
-    plot3(xd(1:k),yd(1:k),zd(1:k),'b')
-    
-    pause(0.1)
-end
+% for k=1:50:length(t)
+%     % a) Eliminas los dibujos anteriores del manipulador aéreo
+%     delete(H1);
+%     H1 = Drone_Plot_3D(xu(k),yu(k),zu(k),0,0,psi(k)); hold on
+%     % b) Gráfica la posición deseada vs actual en cada frame
+%     plot3(xu(1:k),yu(1:k),zu(1:k),'r')
+%     hold on
+%     plot3(xd(1:k),yd(1:k),zd(1:k),'b')
+%     
+%     pause(0.1)
+% end
 
 disp('FIN Simulación RUN')
 
@@ -160,6 +137,38 @@ disp('FIN Simulación RUN')
 %******************************************************************************************************************
 %********************************************* GR�?FICAS ***********************************************************
 %% ****************************************************************************************************************
+
+figure(5)
+
+subplot(4,1,1)
+plot(Tu(1,:))
+hold on
+plot(Tu_est(1,:))
+legend("xd","hx")
+ylabel('x [m]'); xlabel('s [ms]');
+title ("Posiciones deseadas y reales del extremo operativo del manipulador aéreo")
+
+subplot(4,1,2)
+plot(Tu(2,:))
+hold on
+plot(Tu_est(2,:))
+legend("yd","hy")
+ylabel('y [m]'); xlabel('s [ms]');
+
+subplot(4,1,3)
+plot(Tu(3,:))
+hold on
+plot(Tu_est(3,:))
+grid on
+legend("zd","hz")
+ylabel('z [m]'); xlabel('s [ms]');
+
+subplot(4,1,4)
+plot(Tu(4,:))
+hold on
+plot(Tu_est(4,:))
+legend("psid","psi")
+ylabel('psi [rad]'); xlabel('s [ms]');
 
 
 % 2) Cálculos del Error
@@ -174,76 +183,76 @@ plot(hze)
 plot(psie)
 legend("hxe","hye","hze","psie")
 title ("Errores de posición")
-
-% 3) Posiciones deseadas vs posiciones reales del extremo operativo del manipulador aéreo
-figure(3)
-
-subplot(4,1,1)
-plot(xd)
-hold on
-plot(xu)
-legend("xd","hx")
-ylabel('x [m]'); xlabel('s [ms]');
-title ("Posiciones deseadas y reales del extremo operativo del manipulador aéreo")
-
-subplot(4,1,2)
-plot(yd)
-hold on
-plot(yu)
-legend("yd","hy")
-ylabel('y [m]'); xlabel('s [ms]');
-
-subplot(4,1,3)
-plot(zd)
-hold on
-plot(zu)
-grid on
-legend("zd","hz")
-ylabel('z [m]'); xlabel('s [ms]');
-
-subplot(4,1,4)
-plot(Angulo(psid))
-hold on
-plot(psi)
-legend("psid","psi")
-ylabel('psi [rad]'); xlabel('s [ms]');
-
-% 3) Posiciones deseadas vs posiciones reales del extremo operativo del manipulador aéreo
-figure(4)
-
-
-plot(uc(1,1:end))
-hold on
-plot(u(1,1:end))
-hold on
-plot(vref(1,1:end))
-legend("ulc","ul","ul_{ref}")
-ylabel('x [m/s]'); xlabel('s [ms]');
-title ("Posiciones deseadas y reales del extremo operativo del manipulador aéreo")
-
-figure(5)
-plot(uc(2,1:end))
-hold on
-plot(u(2,1:end))
-hold on
-plot(vref(2,1:end))
-legend("umc","um","um_{ref}")
-ylabel('y [m/s]'); xlabel('s [ms]');
-
-figure(6)
-plot(uc(3,1:end))
-hold on
-plot(u(3,1:end))
-hold on
-plot(vref(3,1:end))
-legend("unc","un","un_{ref}")
-ylabel('z [m/ms]'); xlabel('s [ms]');
-
-figure(7)
-plot(uc(4,1:end))
-hold on
-plot(u(4,1:end))
-hold on
-plot(vref(4,1:end))
-legend("wc","w","w_{ref}")
-ylabel('psi [rad/s]'); xlabel('s [ms]');
+% 
+% % 3) Posiciones deseadas vs posiciones reales del extremo operativo del manipulador aéreo
+% figure(3)
+% 
+% subplot(4,1,1)
+% plot(xd)
+% hold on
+% plot(xu)
+% legend("xd","hx")
+% ylabel('x [m]'); xlabel('s [ms]');
+% title ("Posiciones deseadas y reales del extremo operativo del manipulador aéreo")
+% 
+% subplot(4,1,2)
+% plot(yd)
+% hold on
+% plot(yu)
+% legend("yd","hy")
+% ylabel('y [m]'); xlabel('s [ms]');
+% 
+% subplot(4,1,3)
+% plot(zd)
+% hold on
+% plot(zu)
+% grid on
+% legend("zd","hz")
+% ylabel('z [m]'); xlabel('s [ms]');
+% 
+% subplot(4,1,4)
+% plot(Angulo(psid))
+% hold on
+% plot(psi)
+% legend("psid","psi")
+% ylabel('psi [rad]'); xlabel('s [ms]');
+% 
+% % 3) Posiciones deseadas vs posiciones reales del extremo operativo del manipulador aéreo
+% figure(4)
+% 
+% 
+% plot(uc(1,1:end))
+% hold on
+% plot(u(1,1:end))
+% hold on
+% plot(vref(1,1:end))
+% legend("ulc","ul","ul_{ref}")
+% ylabel('x [m/s]'); xlabel('s [ms]');
+% title ("Posiciones deseadas y reales del extremo operativo del manipulador aéreo")
+% 
+% figure(5)
+% plot(uc(2,1:end))
+% hold on
+% plot(u(2,1:end))
+% hold on
+% plot(vref(2,1:end))
+% legend("umc","um","um_{ref}")
+% ylabel('y [m/s]'); xlabel('s [ms]');
+% 
+% figure(6)
+% plot(uc(3,1:end))
+% hold on
+% plot(u(3,1:end))
+% hold on
+% plot(vref(3,1:end))
+% legend("unc","un","un_{ref}")
+% ylabel('z [m/ms]'); xlabel('s [ms]');
+% 
+% figure(7)
+% plot(uc(4,1:end))
+% hold on
+% plot(u(4,1:end))
+% hold on
+% plot(vref(4,1:end))
+% legend("wc","w","w_{ref}")
+% ylabel('psi [rad/s]'); xlabel('s [ms]');
